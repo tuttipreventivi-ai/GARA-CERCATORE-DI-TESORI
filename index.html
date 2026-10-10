@@ -96,7 +96,7 @@
             </table>
         </div>
         <div class="mt-3 text-xs text-slate-400 flex items-center justify-between">
-            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Per nome e missiva, premi <strong>Invio</strong> o esci dal campo per confermare.</span>
+            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Scrivi il valore e premi <strong>Invio</strong> (o esci dal campo) per confermare. Puoi usare anche valori additivi (es. <strong>+3</strong>).</span>
             <span id="sync-status" class="text-amber-400"><i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Connessione al cloud...</span>
         </div>
     </main>
@@ -134,7 +134,6 @@
             ]
         };
 
-        // Inizializza valori di default se vuoti
         state.participants.forEach(p => {
             state.columns.forEach(col => {
                 if (p.values[col.id] === undefined) p.values[col.id] = 0;
@@ -164,7 +163,8 @@
             dbRef.set(state);
         }
 
-        function updateNumberValue(participantId, colId, rawValue) {
+        // Gestione aggiornamento valori numerici confermati all'invio o uscita campo
+        function applyNumberValue(participantId, colId, rawValue, inputElement) {
             const p = state.participants.find(x => x.id === participantId);
             if (!p) return;
 
@@ -172,7 +172,13 @@
             let strVal = String(rawValue).trim();
             let finalVal = currentVal;
 
-            if (strVal === '') return;
+            if (strVal === '') {
+                p.values[colId] = 0;
+                inputElement.value = 0;
+                saveData();
+                updateTotalsAndUI();
+                return;
+            }
 
             if (strVal.startsWith('+')) {
                 let addVal = Number(strVal.substring(1)) || 0;
@@ -186,20 +192,9 @@
             }
 
             p.values[colId] = finalVal;
+            inputElement.value = finalVal;
             saveData();
             updateTotalsAndUI();
-        }
-
-        function confirmNumberValue(participantId, colId, rawValue, inputElement) {
-            const p = state.participants.find(x => x.id === participantId);
-            if (!p) return;
-            let strVal = String(rawValue).trim();
-            if (strVal === '') {
-                p.values[colId] = 0;
-                inputElement.value = 0;
-                saveData();
-                updateTotalsAndUI();
-            }
         }
 
         function updateTotalsAndUI() {
@@ -395,8 +390,8 @@
                             <td class="p-3 text-center">
                                 <div class="flex items-center justify-center gap-1">
                                     <input type="text" inputmode="text" value="${val}" 
-                                        oninput="updateNumberValue(${p.id}, '${col.id}', this.value)" 
-                                        onblur="confirmNumberValue(${p.id}, '${col.id}', this.value, this)"
+                                        onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                                        onblur="applyNumberValue(${p.id}, '${col.id}', this.value, this)"
                                         class="w-20 bg-slate-950/80 border border-slate-700/80 rounded px-2 py-1.5 text-center text-amber-400 font-bold focus:border-amber-500 focus:outline-none text-sm" />
                                 </div>
                             </td>
