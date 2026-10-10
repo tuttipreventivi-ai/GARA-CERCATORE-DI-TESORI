@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
+<!DOCTYPE html><html lang="it"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gara Cacciatore di Tesori</title>
@@ -17,9 +15,7 @@
             -webkit-appearance: none;
             margin: 0;
         }
-    </style>
-</head>
-<body class="min-h-screen flex flex-col">
+    </style></head><body class="min-h-screen flex flex-col">
 
     <!-- Header -->
     <header class="bg-slate-900 border-b border-amber-600/30 py-6 px-4 shadow-xl">
@@ -105,23 +101,14 @@
 
     <!-- Script di gestione -->
     <script>
-        // Struttura colonne predefinite richieste
+        // Struttura colonne predefinite (aggiornata)
         const defaultColumns = [
             { id: 'maschere', name: 'Maschere', custom: false },
             { id: 'copricapo', name: 'Copricapo', custom: false },
             { id: 'chanupa', name: 'Chanupa', custom: false },
             { id: 'tomahawk', name: 'Tomahawk', custom: false },
             { id: 'amuleto', name: 'Amuleto', custom: false },
-            { id: 'acchiappasogni', name: 'Acchiappasogni', custom: false },
-            { id: 'oli_essenziali', name: 'Oli Essenziali', custom: false },
-            { id: 'rosario', name: 'Rosario', custom: false },
-            { id: 'crocifisso', name: 'Crocifisso', custom: false },
-            { id: 'pendente_memoria', name: 'Pendente della Memoria', custom: false },
-            { id: 'ossa', name: 'Ossa', custom: false },
-            { id: 'vermia', name: 'Vermia', custom: false },
-            { id: 'sigilli_ecclesiastici', name: 'Sigilli Ecclesiastici', custom: false },
-            { id: 'collana_crocifisso', name: 'Collana con Crocifisso', custom: false },
-            { id: 'altro', name: 'Altro', custom: false }
+            { id: 'acchiappasogni', name: 'Acchiappasogni', custom: false }
         ];
 
         let state = {
@@ -134,16 +121,10 @@
 
         // Inizializza o carica da localStorage
         function loadData() {
-            const saved = localStorage.getItem('treasure_hunt_data_v2');
+            const saved = localStorage.getItem('treasure_hunt_data_v3');
             if (saved) {
                 try {
                     state = JSON.parse(saved);
-                    // Assicura che ci siano tutte le colonne di default se mancanti
-                    defaultColumns.forEach(defCol => {
-                        if (!state.columns.some(c => c.id === defCol.id)) {
-                            state.columns.push(defCol);
-                        }
-                    });
                 } catch(e) {
                     console.error("Errore caricamento dati salvati", e);
                 }
@@ -158,7 +139,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('treasure_hunt_data_v2', JSON.stringify(state));
+            localStorage.setItem('treasure_hunt_data_v3', JSON.stringify(state));
             render();
         }
 
@@ -173,7 +154,7 @@
             if (strVal.startsWith('+')) {
                 let addVal = Number(strVal.substring(1)) || 0;
                 p.values[colId] = currentVal + addVal;
-                inputElement.value = p.values[colId]; // Aggiorna la vista con il totale calcolato
+                inputElement.value = p.values[colId];
             } else if (strVal.startsWith('-') && strVal.length > 1) {
                 let subVal = Number(strVal.substring(1)) || 0;
                 p.values[colId] = Math.max(0, currentVal - subVal);
@@ -255,7 +236,7 @@
 
         function resetData() {
             if (confirm("Sei sicuro di voler resettare tutti i dati e le voci?")) {
-                localStorage.removeItem('treasure_hunt_data_v2');
+                localStorage.removeItem('treasure_hunt_data_v3');
                 location.reload();
             }
         }
@@ -400,6 +381,4 @@
         // Avvio applicazione
         loadData();
         render();
-    </script>
-</body>
-</html>
+    </script></body></html>
