@@ -89,7 +89,7 @@
             </table>
         </div>
         <div class="mt-3 text-xs text-slate-400 flex items-center justify-between">
-            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Nei campi numerici puoi inserire direttamente valori additivi (es. digitando <strong>+3</strong> si sommerà al valore esistente).</span>
+            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Nei campi numerici puoi inserire valori assoluti o additivi (es. digitando <strong>+3</strong> si sommerà al totale). Per la missiva, premi <strong>Invio</strong> per confermare.</span>
             <span>Salvataggio automatico locale attivo.</span>
         </div>
     </main>
@@ -101,7 +101,6 @@
 
     <!-- Script di gestione -->
     <script>
-        // Struttura colonne predefinite (aggiornata)
         const defaultColumns = [
             { id: 'maschere', name: 'Maschere', custom: false },
             { id: 'copricapo', name: 'Copricapo', custom: false },
@@ -119,9 +118,8 @@
             ]
         };
 
-        // Inizializza o carica da localStorage
         function loadData() {
-            const saved = localStorage.getItem('treasure_hunt_data_v3');
+            const saved = localStorage.getItem('treasure_hunt_data_v5');
             if (saved) {
                 try {
                     state = JSON.parse(saved);
@@ -129,7 +127,6 @@
                     console.error("Errore caricamento dati salvati", e);
                 }
             } else {
-                // Inizializza valori vuoti per i partecipanti di default
                 state.participants.forEach(p => {
                     state.columns.forEach(col => {
                         p.values[col.id] = 0;
@@ -139,35 +136,89 @@
         }
 
         function saveData() {
-            localStorage.setItem('treasure_hunt_data_v3', JSON.stringify(state));
-            render();
+            localStorage.setItem('treasure_hunt_data_v5', JSON.stringify(state));
         }
 
-        // Funzione per gestire l'inserimento rapido con calcolo additivo (es. "+5")
-        function handleNumberInput(participantId, colId, rawValue, inputElement) {
+        // Gestione aggiornamento valori numerici (supporta numeri fissi o operatori + / -)
+        function updateNumberValue(participantId, colId, rawValue, displayElementId) {
             const p = state.participants.find(x => x.id === participantId);
             if (!p) return;
 
             let currentVal = Number(p.values[colId]) || 0;
             let strVal = String(rawValue).trim();
+            let finalVal = currentVal;
 
             if (strVal.startsWith('+')) {
                 let addVal = Number(strVal.substring(1)) || 0;
-                p.values[colId] = currentVal + addVal;
-                inputElement.value = p.values[colId];
+                finalVal = currentVal + addVal;
             } else if (strVal.startsWith('-') && strVal.length > 1) {
                 let subVal = Number(strVal.substring(1)) || 0;
-                p.values[colId] = Math.max(0, currentVal - subVal);
-                inputElement.value = p.values[colId];
+                finalVal = Math.max(0, currentVal - subVal);
             } else {
-                p.values[colId] = strVal === '' ? 0 : Number(strVal);
+                finalVal = strVal === '' ? 0 : Number(strVal);
+                if (isNaN(finalVal)) finalVal = 0;
             }
+
+            p.values[colId] = finalVal;
             saveData();
+
+            // Aggiorna senza distruggere il focus dell'input corrente
+            updateTotalsAndUI();
         }
 
-        function updateParticipantField(participantId, field, value) {
+        // Funzione per aggiornare solo i totali visibili senza ricreare l'intera tabella (preserva il focus)
+        function updateTotalsAndUI() {
+            let totalsByColumn = {};
+            state.columns.forEach(c => totalsByColumn[c.id] = 0);
+            let grandTotalAll = 0;
+            let topHunterName = "-";
+            let topHunterScore = -1;
+
+            state.participants.forEach((p, index) => {
+                let rowTotal = 0;
+                state.columns.forEach(col => {
+                    let val = Number(p.values[col.id]) || 0;
+                    totalsByColumn[col.id] += val;
+                    rowTotal += val;
+                });
+                grandTotalAll += rowTotal;
+
+                if (rowTotal > topHunterScore) {
+                    topHunterScore = rowTotal;
+                    topHunterName = p.name || `Cacciatore ${p.id}`;
+                }
+
+                // Aggiorna cella totale riga se esiste
+                const rowTotEl = document.getElementById(`row-tot-${p.id}`);
+                if (rowTotEl) rowTotEl.innerText = rowTotal;
+            });
+
+            // Aggiorna piè di pagina con i totali di colonna
+            state.columns.forEach(col => {
+                const colTotEl = document.getElementById(`col-tot-${col.id}`);
+                if (colTotEl) colTotEl.innerText = totalsByColumn[col.id];
+            });
+
+            const grandTotEl = document.getElementById('grand-total-all');
+            if (grandTotEl) grandTotEl.innerText = grandTotalAll;
+
+            // Statistiche
+            document.getElementById('stat-participants').innerText = state.participants.length;
+            document.getElementById('stat-total-items').innerText = grandTotalAll;
+            document.getElementById('stat-total-columns').innerText = state.columns.length;
+            document.getElementById('stat-top-hunter').innerText = topHunterScore > 0 ? `${topHunterName} (${topHunterScore})` : '-';
+        }
+
+        function updateParticipantFieldInMemory(participantId, field, value) {
             const p = state.participants.find(x => x.id === participantId);
             if (p) {
+                p[field] = value;
+            }
+        }
+
+        function confirmParticipantField(participantId, field, value) {
+            const p = state.participants.find(x => x.id === participantId);
+            if (p && p[field] !== value) {
                 p[field] = value;
                 saveData();
             }
@@ -194,6 +245,7 @@
             });
             state.participants.push(newParticipant);
             saveData();
+            render();
         }
 
         function removeParticipant(id) {
@@ -204,6 +256,7 @@
             if (confirm("Vuoi rimuovere questo cacciatore?")) {
                 state.participants = state.participants.filter(p => p.id !== id);
                 saveData();
+                render();
             }
         }
 
@@ -218,6 +271,7 @@
                 p.values[colId] = 0;
             });
             saveData();
+            render();
         }
 
         function removeColumn(colId) {
@@ -231,27 +285,26 @@
                     delete p.values[colId];
                 });
                 saveData();
+                render();
             }
         }
 
         function resetData() {
             if (confirm("Sei sicuro di voler resettare tutti i dati e le voci?")) {
-                localStorage.removeItem('treasure_hunt_data_v3');
+                localStorage.removeItem('treasure_hunt_data_v5');
                 location.reload();
             }
         }
 
-        // Render della tabella e statistiche
         function render() {
             const headerRow = document.getElementById('tableHeader');
             const bodyRows = document.getElementById('tableBody');
             const footerRow = document.getElementById('tableFooter');
 
-            // 1. Costruzione Header
             let headerHTML = `
                 <th class="p-3.5 text-center w-12 text-slate-500">#</th>
                 <th class="p-3.5 min-w-[200px]">NOME CACCIATORE</th>
-                <th class="p-3.5 min-w-[120px]">MISSIVA (CAP)</th>
+                <th class="p-3.5 min-w-[120px]">MISSIVA</th>
             `;
             state.columns.forEach(col => {
                 headerHTML += `
@@ -267,39 +320,27 @@
             headerHTML += `<th class="p-3.5 text-center w-28">TOTALE</th><th class="p-3.5 text-center w-16"></th>`;
             headerRow.innerHTML = headerHTML;
 
-            // 2. Costruzione Body
             let bodyHTML = '';
-            let totalsByColumn = {};
-            state.columns.forEach(c => totalsByColumn[c.id] = 0);
-            let grandTotalAll = 0;
-            let topHunterName = "-";
-            let topHunterScore = -1;
-
             state.participants.forEach((p, index) => {
                 let rowTotal = 0;
                 state.columns.forEach(col => {
-                    let val = Number(p.values[col.id]) || 0;
-                    totalsByColumn[col.id] += val;
-                    rowTotal += val;
+                    rowTotal += Number(p.values[col.id]) || 0;
                 });
-                grandTotalAll += rowTotal;
-
-                if (rowTotal > topHunterScore) {
-                    topHunterScore = rowTotal;
-                    topHunterName = p.name || `Cacciatore ${p.id}`;
-                }
 
                 bodyHTML += `
                     <tr class="hover:bg-slate-800/40 transition">
                         <td class="p-3 text-center text-slate-500 font-mono text-xs">${index + 1}</td>
                         <td class="p-3">
                             <input type="text" value="${p.name || ''}" placeholder="Nome cacciatore" 
-                                oninput="updateParticipantField(${p.id}, 'name', this.value)" 
+                                oninput="updateParticipantFieldInMemory(${p.id}, 'name', this.value)" 
+                                onblur="confirmParticipantField(${p.id}, 'name', this.value)"
                                 class="w-full bg-slate-950/60 border border-slate-700/60 rounded px-2.5 py-1.5 text-slate-200 focus:border-amber-500 focus:outline-none text-sm font-medium" />
                         </td>
                         <td class="p-3">
-                            <input type="text" value="${p.missiva || ''}" placeholder="Codice Postale" 
-                                oninput="updateParticipantField(${p.id}, 'missiva', this.value)" 
+                            <input type="text" value="${p.missiva || ''}" placeholder="Alfanumerico" 
+                                oninput="updateParticipantFieldInMemory(${p.id}, 'missiva', this.value)" 
+                                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                                onblur="confirmParticipantField(${p.id}, 'missiva', this.value)"
                                 class="w-full bg-slate-950/60 border border-slate-700/60 rounded px-2.5 py-1.5 text-slate-300 focus:border-amber-500 focus:outline-none text-sm font-mono text-center" />
                         </td>
                 `;
@@ -309,8 +350,8 @@
                     bodyHTML += `
                         <td class="p-3 text-center">
                             <div class="flex items-center justify-center gap-1">
-                                <input type="number" min="0" value="${val}" 
-                                    onchange="handleNumberInput(${p.id}, '${col.id}', this.value, this)" 
+                                <input type="text" inputmode="text" value="${val}" 
+                                    oninput="updateNumberValue(${p.id}, '${col.id}', this.value)" 
                                     class="w-20 bg-slate-950/80 border border-slate-700/80 rounded px-2 py-1.5 text-center text-amber-400 font-bold focus:border-amber-500 focus:outline-none text-sm" />
                             </div>
                         </td>
@@ -318,7 +359,7 @@
                 });
 
                 bodyHTML += `
-                        <td class="p-3 text-center font-bold text-emerald-400 font-mono text-base bg-slate-950/30">${rowTotal}</td>
+                        <td class="p-3 text-center font-bold text-emerald-400 font-mono text-base bg-slate-950/30" id="row-tot-${p.id}">${rowTotal}</td>
                         <td class="p-3 text-center">
                             <button onclick="removeParticipant(${p.id})" class="text-slate-500 hover:text-rose-400 transition p-1.5 rounded hover:bg-slate-800" title="Rimuovi cacciatore">
                                 <i class="fa-solid fa-trash-can"></i>
@@ -329,34 +370,37 @@
             });
             bodyRows.innerHTML = bodyHTML;
 
-            // 3. Costruzione Footer (Somme per colonna)
+            let totalsByColumn = {};
+            state.columns.forEach(c => totalsByColumn[c.id] = 0);
+            let grandTotalAll = 0;
+            state.participants.forEach(p => {
+                state.columns.forEach(col => {
+                    let val = Number(p.values[col.id]) || 0;
+                    totalsByColumn[col.id] += val;
+                    grandTotalAll += val;
+                });
+            });
+
             let footerHTML = `
                 <td class="p-3.5 text-center text-amber-500 font-title" colspan="3">TOTALE COMPLESSIVO</td>
             `;
             state.columns.forEach(col => {
-                footerHTML += `<td class="p-3.5 text-center text-amber-400 font-mono text-base">${totalsByColumn[col.id]}</td>`;
+                footerHTML += `<td class="p-3.5 text-center text-amber-400 font-mono text-base" id="col-tot-${col.id}">${totalsByColumn[col.id]}</td>`;
             });
-            footerHTML += `<td class="p-3.5 text-center text-emerald-400 font-mono text-lg">${grandTotalAll}</td><td></td>`;
+            footerHTML += `<td class="p-3.5 text-center text-emerald-400 font-mono text-lg" id="grand-total-all">${grandTotalAll}</td><td></td>`;
             footerRow.innerHTML = footerHTML;
 
-            // 4. Aggiornamento Statistiche Superiori
-            document.getElementById('stat-participants').innerText = state.participants.length;
-            document.getElementById('stat-total-items').innerText = grandTotalAll;
-            document.getElementById('stat-total-columns').innerText = state.columns.length;
-            document.getElementById('stat-top-hunter').innerText = topHunterScore > 0 ? `${topHunterName} (${topHunterScore})` : '-';
+            updateTotalsAndUI();
         }
 
-        // Esportazione in formato CSV
         function exportCSV() {
             let csvContent = "data:text/csv;charset=utf-8,";
             
-            // Intestazione CSV
-            let headers = ["ID", "Nome Cacciatore", "Missiva (CAP)"];
+            let headers = ["ID", "Nome Cacciatore", "Missiva"];
             state.columns.forEach(c => headers.push(c.name));
             headers.push("Totale");
             csvContent += headers.join(",") + "\r\n";
 
-            // Righe partecipanti
             state.participants.forEach((p, idx) => {
                 let row = [idx + 1, `"${p.name || ''}"`, `"${p.missiva || ''}"`];
                 let rowTot = 0;
@@ -378,7 +422,6 @@
             document.body.removeChild(link);
         }
 
-        // Avvio applicazione
         loadData();
         render();
     </script></body></html>
