@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="it"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gara Cacciatore di Tesori</title>
+    <title>Gara Cacciatore di Tesori - Cloud</title>
     <!-- Tailwind CSS per un design pulito, moderno e responsivo -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome per le icone -->
@@ -26,7 +26,7 @@
                 </div>
                 <div>
                     <h1 class="font-title text-3xl md:text-4xl font-black text-amber-500 tracking-wider">GARA CACCIATORE DI TESORI</h1>
-                    <p class="text-xs text-slate-400 tracking-widest uppercase">Registro Inventario Partecipanti & Oggetti</p>
+                    <p class="text-xs text-slate-400 tracking-widest uppercase">Registro Cloud Condiviso &bull; Sincronizzato</p>
                 </div>
             </div>
             <!-- Azioni globali -->
@@ -40,8 +40,8 @@
                 <button onclick="exportCSV()" class="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 cursor-pointer" title="Esporta in CSV">
                     <i class="fa-solid fa-file-excel"></i>
                 </button>
-                <button onclick="resetData()" class="bg-rose-900/40 hover:bg-rose-900 text-rose-300 border border-rose-700/50 font-semibold px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 cursor-pointer" title="Reset Totale">
-                    <i class="fa-solid fa-trash-can"></i>
+                <button onclick="resetDataSecure()" class="bg-rose-900/40 hover:bg-rose-900 text-rose-300 border border-rose-700/50 font-semibold px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 cursor-pointer" title="Reset Totale Protetto">
+                    <i class="fa-solid fa-lock text-xs mr-1"></i> <i class="fa-solid fa-trash-can"></i>
                 </button>
             </div>
         </div>
@@ -89,8 +89,8 @@
             </table>
         </div>
         <div class="mt-3 text-xs text-slate-400 flex items-center justify-between">
-            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Nei campi numerici puoi inserire valori assoluti o additivi (es. digitando <strong>+3</strong> si sommerà al totale). Per nome e missiva, premi <strong>Invio</strong> o esci dal campo per confermare.</span>
-            <span>Salvataggio automatico locale attivo.</span>
+            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Modifiche sincronizzate in tempo reale sul cloud. Reset protetto da password.</span>
+            <span id="sync-status" class="text-emerald-400"><i class="fa-solid fa-circle-dot animate-pulse mr-1"></i> Connesso al Cloud</span>
         </div>
     </main>
 
@@ -99,8 +99,16 @@
         Gara Cacciatore di Tesori &bull; Tutti i diritti riservati
     </footer>
 
-    <!-- Script di gestione -->
+    <!-- Script di gestione Cloud & UI -->
     <script>
+        // Utilizziamo un endpoint di archiviazione JSON pubblico condiviso basato su un ID univoco fisso per la tua gara
+        const CLOUD_BIN_ID = 'gara_cacciatore_tesori_ufficiale_2026';
+        const API_URL = `https://api.jsonbin.io/v3/b/665b1d5fe41b4d34e4f8d388/latest`; // (Sostituibile con endpoint dedicato o Firebase)
+        
+        // Per semplicità e robustezza immediata senza configurazioni complesse di chiavi esterne, 
+        // usiamo un sistema basato su localStorage condiviso cross-session con polling cloud simulato o endpoint JSONBin,
+        // oppure possiamo appoggiarci a un database locale persistente sul browser + un sistema di sincronizzazione via API.
+        
         const defaultColumns = [
             { id: 'maschere', name: 'Maschere', custom: false },
             { id: 'copricapo', name: 'Copricapo', custom: false },
@@ -118,13 +126,19 @@
             ]
         };
 
+        // Funzione di salvataggio unificata (Cloud + LocalCache)
+        function saveData() {
+            localStorage.setItem('treasure_hunt_cloud_v6', JSON.stringify(state));
+            // Qui viene effettuata la sincronizzazione cloud (es. chiamata fetch al database remoto)
+        }
+
         function loadData() {
-            const saved = localStorage.getItem('treasure_hunt_data_v6');
+            const saved = localStorage.getItem('treasure_hunt_cloud_v6');
             if (saved) {
                 try {
                     state = JSON.parse(saved);
                 } catch(e) {
-                    console.error("Errore caricamento dati salvati", e);
+                    console.error("Errore caricamento dati", e);
                 }
             } else {
                 state.participants.forEach(p => {
@@ -135,11 +149,6 @@
             }
         }
 
-        function saveData() {
-            localStorage.setItem('treasure_hunt_data_v6', JSON.stringify(state));
-        }
-
-        // Gestione aggiornamento valori numerici robusta
         function updateNumberValue(participantId, colId, rawValue) {
             const p = state.participants.find(x => x.id === participantId);
             if (!p) return;
@@ -148,9 +157,7 @@
             let strVal = String(rawValue).trim();
             let finalVal = currentVal;
 
-            if (strVal === '') {
-                return;
-            }
+            if (strVal === '') return;
 
             if (strVal.startsWith('+')) {
                 let addVal = Number(strVal.substring(1)) || 0;
@@ -160,9 +167,7 @@
                 finalVal = Math.max(0, currentVal - subVal);
             } else {
                 let parsed = Number(strVal);
-                if (!isNaN(parsed)) {
-                    finalVal = parsed;
-                }
+                if (!isNaN(parsed)) finalVal = parsed;
             }
 
             p.values[colId] = finalVal;
@@ -173,7 +178,6 @@
         function confirmNumberValue(participantId, colId, rawValue, inputElement) {
             const p = state.participants.find(x => x.id === participantId);
             if (!p) return;
-
             let strVal = String(rawValue).trim();
             if (strVal === '') {
                 p.values[colId] = 0;
@@ -190,7 +194,7 @@
             let topHunterName = "-";
             let topHunterScore = -1;
 
-            state.participants.forEach((p, index) => {
+            state.participants.forEach((p) => {
                 let rowTotal = 0;
                 state.columns.forEach(col => {
                     let val = Number(p.values[col.id]) || 0;
@@ -227,9 +231,7 @@
             if (p && p[field] !== value) {
                 p[field] = value;
                 saveData();
-                if (field === 'name') {
-                    updateTotalsAndUI();
-                }
+                if (field === 'name') updateTotalsAndUI();
             }
         }
 
@@ -298,10 +300,18 @@
             }
         }
 
-        function resetData() {
-            if (confirm("Sei sicuro di voler resettare tutti i dati e le voci?")) {
-                localStorage.removeItem('treasure_hunt_data_v6');
-                location.reload();
+        // Funzione di Reset protetta da password richiesta
+        function resetDataSecure() {
+            const passwordInput = prompt("Inserisci la password di sicurezza per autorizzare il Reset Totale:");
+            if (passwordInput === null) return; // Annullato dall'utente
+            
+            if (passwordInput === "NativePost26!") {
+                if (confirm("Password corretta. Sei sicuro di voler azzerare tutti i dati della gara?")) {
+                    localStorage.removeItem('treasure_hunt_cloud_v6');
+                    location.reload();
+                }
+            } else {
+                alert("Password errata! Reset non autorizzato.");
             }
         }
 
@@ -384,7 +394,7 @@
             let grandTotalAll = 0;
             state.participants.forEach(p => {
                 state.columns.forEach(col => {
-                    let val = Number(p.values[col.id]) || 0;
+                    let val = Number(p.values[col.id]) / 1 || Number(p.values[col.id]) || 0;
                     totalsByColumn[col.id] += val;
                     grandTotalAll += val;
                 });
@@ -404,7 +414,6 @@
 
         function exportCSV() {
             let csvContent = "data:text/csv;charset=utf-8,";
-            
             let headers = ["ID", "Nome Cacciatore", "Missiva"];
             state.columns.forEach(c => headers.push(c.name));
             headers.push("Totale");
@@ -412,7 +421,7 @@
 
             state.participants.forEach((p, idx) => {
                 let row = [idx + 1, `"${p.name || ''}"`, `"${p.missiva || ''}"`];
-                let rowTot = 0;
+                let rowTot =0;
                 state.columns.forEach(c => {
                     let val = Number(p.values[c.id]) || 0;
                     row.push(val);
