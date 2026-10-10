@@ -89,7 +89,7 @@
             </table>
         </div>
         <div class="mt-3 text-xs text-slate-400 flex items-center justify-between">
-            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Nei campi numerici puoi inserire valori assoluti o additivi (es. digitando <strong>+3</strong> si sommerà al totale). Per la missiva, premi <strong>Invio</strong> per confermare.</span>
+            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Nei campi numerici puoi inserire valori assoluti o additivi (es. digitando <strong>+3</strong> si sommerà al totale). Per nome e missiva, premi <strong>Invio</strong> o esci dal campo per confermare.</span>
             <span>Salvataggio automatico locale attivo.</span>
         </div>
     </main>
@@ -149,8 +149,6 @@
             let finalVal = currentVal;
 
             if (strVal === '') {
-                // Se l'utente cancella il campo, lasciamo temporaneamente il valore invariato 
-                // in modo da non azzerare i totali mentre sta scrivendo il nuovo numero
                 return;
             }
 
@@ -172,7 +170,6 @@
             updateTotalsAndUI();
         }
 
-        // Funzione eseguita quando l'utente esce dal campo (onblur), gestisce l'azzzeramento se il campo è vuoto
         function confirmNumberValue(participantId, colId, rawValue, inputElement) {
             const p = state.participants.find(x => x.id === participantId);
             if (!p) return;
@@ -186,7 +183,6 @@
             }
         }
 
-        // Funzione per aggiornare solo i totali visibili senza ricreare l'intera tabella (preserva il focus)
         function updateTotalsAndUI() {
             let totalsByColumn = {};
             state.columns.forEach(c => totalsByColumn[c.id] = 0);
@@ -226,18 +222,14 @@
             document.getElementById('stat-top-hunter').innerText = topHunterScore > 0 ? `${topHunterName} (${topHunterScore})` : '-';
         }
 
-        function updateParticipantFieldInMemory(participantId, field, value) {
-            const p = state.participants.find(x => x.id === participantId);
-            if (p) {
-                p[field] = value;
-            }
-        }
-
         function confirmParticipantField(participantId, field, value) {
             const p = state.participants.find(x => x.id === participantId);
             if (p && p[field] !== value) {
                 p[field] = value;
                 saveData();
+                if (field === 'name') {
+                    updateTotalsAndUI();
+                }
             }
         }
 
@@ -349,13 +341,12 @@
                         <td class="p-3 text-center text-slate-500 font-mono text-xs">${index + 1}</td>
                         <td class="p-3">
                             <input type="text" value="${p.name || ''}" placeholder="Nome cacciatore" 
-                                oninput="updateParticipantFieldInMemory(${p.id}, 'name', this.value)" 
+                                onkeydown="if(event.key === 'Enter') { this.blur(); }"
                                 onblur="confirmParticipantField(${p.id}, 'name', this.value)"
                                 class="w-full bg-slate-950/60 border border-slate-700/60 rounded px-2.5 py-1.5 text-slate-200 focus:border-amber-500 focus:outline-none text-sm font-medium" />
                         </td>
                         <td class="p-3">
                             <input type="text" value="${p.missiva || ''}" placeholder="Alfanumerico" 
-                                oninput="updateParticipantFieldInMemory(${p.id}, 'missiva', this.value)" 
                                 onkeydown="if(event.key === 'Enter') { this.blur(); }"
                                 onblur="confirmParticipantField(${p.id}, 'missiva', this.value)"
                                 class="w-full bg-slate-950/60 border border-slate-700/60 rounded px-2.5 py-1.5 text-slate-300 focus:border-amber-500 focus:outline-none text-sm font-mono text-center" />
