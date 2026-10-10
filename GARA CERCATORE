@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gara Cacciatore di Tesori</title>
+    <!-- Tailwind CSS per un design pulito, moderno e responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome per le icone -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap');
+        .font-title { font-family: 'Cinzel', serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-amber-600/30 py-6 px-4 shadow-xl">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-600/20 p-3 rounded-xl border border-amber-500/30 text-amber-500">
+                    <i class="fa-solid fa-compass text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-title text-3xl md:text-4xl font-black text-amber-500 tracking-wider">GARA CACCIATORE DI TESORI</h1>
+                    <p class="text-xs text-slate-400 tracking-widest uppercase">Registro Inventario Partecipanti & Oggetti</p>
+                </div>
+            </div>
+            <!-- Azioni globali -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="addParticipant()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow-lg shadow-amber-600/20 cursor-pointer">
+                    <i class="fa-solid fa-user-plus"></i> Aggiungi Cacciatore
+                </button>
+                <button onclick="addColumn()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-plus-circle"></i> Nuovo Oggetto
+                </button>
+                <button onclick="exportCSV()" class="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 cursor-pointer" title="Esporta in CSV">
+                    <i class="fa-solid fa-file-excel"></i>
+                </button>
+                <button onclick="resetData()" class="bg-rose-900/40 hover:bg-rose-900 text-rose-300 border border-rose-700/50 font-semibold px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 cursor-pointer" title="Reset Totale">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-[98%] w-full mx-auto p-4 md:p-6 overflow-hidden flex flex-col">
+        
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-md">
+                <div class="text-slate-400 text-xs uppercase font-semibold">Cacciatori Totali</div>
+                <div id="stat-participants" class="text-2xl font-bold text-amber-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-md">
+                <div class="text-slate-400 text-xs uppercase font-semibold">Oggetti Totali Raccolti</div>
+                <div id="stat-total-items" class="text-2xl font-bold text-emerald-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-md">
+                <div class="text-slate-400 text-xs uppercase font-semibold">Tipologie Monitorate</div>
+                <div id="stat-total-columns" class="text-2xl font-bold text-sky-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-md">
+                <div class="text-slate-400 text-xs uppercase font-semibold">Miglior Cacciatore</div>
+                <div id="stat-top-hunter" class="text-lg font-bold text-amber-500 mt-1 truncate">-</div>
+            </div>
+        </div>
+
+        <!-- Tabella principale -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-x-auto flex-grow">
+            <table class="w-full text-left border-collapse min-w-max" id="treasureTable">
+                <thead>
+                    <tr id="tableHeader" class="bg-slate-950/80 border-b border-slate-800 text-xs uppercase tracking-wider text-slate-400">
+                        <!-- Generato dinamicamente via JS -->
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-slate-800/60 text-sm">
+                    <!-- Generato dinamicamente via JS -->
+                </tbody>
+                <tfoot>
+                    <tr id="tableFooter" class="bg-slate-950/90 border-t-2 border-amber-600/40 font-bold text-slate-200 text-sm">
+                        <!-- Generato dinamicamente via JS -->
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="mt-3 text-xs text-slate-400 flex items-center justify-between">
+            <span><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Suggerimento: Nei campi numerici puoi inserire direttamente valori additivi (es. digitando <strong>+3</strong> si sommerà al valore esistente).</span>
+            <span>Salvataggio automatico locale attivo.</span>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 py-4 text-center text-xs text-slate-500 border-t border-slate-900">
+        Gara Cacciatore di Tesori &bull; Tutti i diritti riservati
+    </footer>
+
+    <!-- Script di gestione -->
+    <script>
+        // Struttura colonne predefinite richieste
+        const defaultColumns = [
+            { id: 'maschere', name: 'Maschere', custom: false },
+            { id: 'copricapo', name: 'Copricapo', custom: false },
+            { id: 'chanupa', name: 'Chanupa', custom: false },
+            { id: 'tomahawk', name: 'Tomahawk', custom: false },
+            { id: 'amuleto', name: 'Amuleto', custom: false },
+            { id: 'acchiappasogni', name: 'Acchiappasogni', custom: false },
+            { id: 'oli_essenziali', name: 'Oli Essenziali', custom: false },
+            { id: 'rosario', name: 'Rosario', custom: false },
+            { id: 'crocifisso', name: 'Crocifisso', custom: false },
+            { id: 'pendente_memoria', name: 'Pendente della Memoria', custom: false },
+            { id: 'ossa', name: 'Ossa', custom: false },
+            { id: 'vermia', name: 'Vermia', custom: false },
+            { id: 'sigilli_ecclesiastici', name: 'Sigilli Ecclesiastici', custom: false },
+            { id: 'collana_crocifisso', name: 'Collana con Crocifisso', custom: false },
+            { id: 'altro', name: 'Altro', custom: false }
+        ];
+
+        let state = {
+            columns: [...defaultColumns],
+            participants: [
+                { id: 1, name: "Mario Rossi", missiva: "00189", values: {} },
+                { id: 2, name: "Giulia Bianchi", missiva: "00191", values: {} }
+            ]
+        };
+
+        // Inizializza o carica da localStorage
+        function loadData() {
+            const saved = localStorage.getItem('treasure_hunt_data_v2');
+            if (saved) {
+                try {
+                    state = JSON.parse(saved);
+                    // Assicura che ci siano tutte le colonne di default se mancanti
+                    defaultColumns.forEach(defCol => {
+                        if (!state.columns.some(c => c.id === defCol.id)) {
+                            state.columns.push(defCol);
+                        }
+                    });
+                } catch(e) {
+                    console.error("Errore caricamento dati salvati", e);
+                }
+            } else {
+                // Inizializza valori vuoti per i partecipanti di default
+                state.participants.forEach(p => {
+                    state.columns.forEach(col => {
+                        p.values[col.id] = 0;
+                    });
+                });
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('treasure_hunt_data_v2', JSON.stringify(state));
+            render();
+        }
+
+        // Funzione per gestire l'inserimento rapido con calcolo additivo (es. "+5")
+        function handleNumberInput(participantId, colId, rawValue, inputElement) {
+            const p = state.participants.find(x => x.id === participantId);
+            if (!p) return;
+
+            let currentVal = Number(p.values[colId]) || 0;
+            let strVal = String(rawValue).trim();
+
+            if (strVal.startsWith('+')) {
+                let addVal = Number(strVal.substring(1)) || 0;
+                p.values[colId] = currentVal + addVal;
+                inputElement.value = p.values[colId]; // Aggiorna la vista con il totale calcolato
+            } else if (strVal.startsWith('-') && strVal.length > 1) {
+                let subVal = Number(strVal.substring(1)) || 0;
+                p.values[colId] = Math.max(0, currentVal - subVal);
+                inputElement.value = p.values[colId];
+            } else {
+                p.values[colId] = strVal === '' ? 0 : Number(strVal);
+            }
+            saveData();
+        }
+
+        function updateParticipantField(participantId, field, value) {
+            const p = state.participants.find(x => x.id === participantId);
+            if (p) {
+                p[field] = value;
+                saveData();
+            }
+        }
+
+        function updateColumnName(colId, newName) {
+            const col = state.columns.find(c => c.id === colId);
+            if (col) {
+                col.name = newName;
+                saveData();
+            }
+        }
+
+        function addParticipant() {
+            const newId = state.participants.length > 0 ? Math.max(...state.participants.map(p => p.id)) + 1 : 1;
+            const newParticipant = {
+                id: newId,
+                name: `Cacciatore ${newId}`,
+                missiva: "",
+                values: {}
+            };
+            state.columns.forEach(col => {
+                newParticipant.values[col.id] = 0;
+            });
+            state.participants.push(newParticipant);
+            saveData();
+        }
+
+        function removeParticipant(id) {
+            if (state.participants.length <= 1) {
+                alert("Deve esserci almeno un cacciatore registrato.");
+                return;
+            }
+            if (confirm("Vuoi rimuovere questo cacciatore?")) {
+                state.participants = state.participants.filter(p => p.id !== id);
+                saveData();
+            }
+        }
+
+        function addColumn() {
+            const name = prompt("Inserisci il nome del nuovo oggetto:");
+            if (!name || name.trim() === "") return;
+            
+            const colId = 'custom_' + Date.now();
+            state.columns.push({ id: colId, name: name.trim(), custom: true });
+            
+            state.participants.forEach(p => {
+                p.values[colId] = 0;
+            });
+            saveData();
+        }
+
+        function removeColumn(colId) {
+            if (state.columns.length <= 1) {
+                alert("Non puoi rimuovere tutte le colonne.");
+                return;
+            }
+            if (confirm("Eliminare questa tipologia di oggetto da tutti i cacciatori?")) {
+                state.columns = state.columns.filter(c => c.id !== colId);
+                state.participants.forEach(p => {
+                    delete p.values[colId];
+                });
+                saveData();
+            }
+        }
+
+        function resetData() {
+            if (confirm("Sei sicuro di voler resettare tutti i dati e le voci?")) {
+                localStorage.removeItem('treasure_hunt_data_v2');
+                location.reload();
+            }
+        }
+
+        // Render della tabella e statistiche
+        function render() {
+            const headerRow = document.getElementById('tableHeader');
+            const bodyRows = document.getElementById('tableBody');
+            const footerRow = document.getElementById('tableFooter');
+
+            // 1. Costruzione Header
+            let headerHTML = `
+                <th class="p-3.5 text-center w-12 text-slate-500">#</th>
+                <th class="p-3.5 min-w-[200px]">NOME CACCIATORE</th>
+                <th class="p-3.5 min-w-[120px]">MISSIVA (CAP)</th>
+            `;
+            state.columns.forEach(col => {
+                headerHTML += `
+                    <th class="p-3.5 min-w-[130px] text-center relative group">
+                        <div class="flex items-center justify-between gap-1">
+                            <input type="text" value="${col.name}" onchange="updateColumnName('${col.id}', this.value)" 
+                                class="bg-transparent hover:bg-slate-900 focus:bg-slate-900 text-amber-400 font-bold text-xs uppercase text-center w-full px-1 py-0.5 rounded border border-transparent focus:border-amber-500/50 outline-none transition" />
+                            ${col.custom ? `<button onclick="removeColumn('${col.id}')" class="text-rose-400 hover:text-rose-300 opacity-60 group-hover:opacity-100 transition p-1" title="Elimina colonna"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                        </div>
+                    </th>
+                `;
+            });
+            headerHTML += `<th class="p-3.5 text-center w-28">TOTALE</th><th class="p-3.5 text-center w-16"></th>`;
+            headerRow.innerHTML = headerHTML;
+
+            // 2. Costruzione Body
+            let bodyHTML = '';
+            let totalsByColumn = {};
+            state.columns.forEach(c => totalsByColumn[c.id] = 0);
+            let grandTotalAll = 0;
+            let topHunterName = "-";
+            let topHunterScore = -1;
+
+            state.participants.forEach((p, index) => {
+                let rowTotal = 0;
+                state.columns.forEach(col => {
+                    let val = Number(p.values[col.id]) || 0;
+                    totalsByColumn[col.id] += val;
+                    rowTotal += val;
+                });
+                grandTotalAll += rowTotal;
+
+                if (rowTotal > topHunterScore) {
+                    topHunterScore = rowTotal;
+                    topHunterName = p.name || `Cacciatore ${p.id}`;
+                }
+
+                bodyHTML += `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="p-3 text-center text-slate-500 font-mono text-xs">${index + 1}</td>
+                        <td class="p-3">
+                            <input type="text" value="${p.name || ''}" placeholder="Nome cacciatore" 
+                                oninput="updateParticipantField(${p.id}, 'name', this.value)" 
+                                class="w-full bg-slate-950/60 border border-slate-700/60 rounded px-2.5 py-1.5 text-slate-200 focus:border-amber-500 focus:outline-none text-sm font-medium" />
+                        </td>
+                        <td class="p-3">
+                            <input type="text" value="${p.missiva || ''}" placeholder="Codice Postale" 
+                                oninput="updateParticipantField(${p.id}, 'missiva', this.value)" 
+                                class="w-full bg-slate-950/60 border border-slate-700/60 rounded px-2.5 py-1.5 text-slate-300 focus:border-amber-500 focus:outline-none text-sm font-mono text-center" />
+                        </td>
+                `;
+
+                state.columns.forEach(col => {
+                    let val = p.values[col.id] !== undefined ? p.values[col.id] : 0;
+                    bodyHTML += `
+                        <td class="p-3 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <input type="number" min="0" value="${val}" 
+                                    onchange="handleNumberInput(${p.id}, '${col.id}', this.value, this)" 
+                                    class="w-20 bg-slate-950/80 border border-slate-700/80 rounded px-2 py-1.5 text-center text-amber-400 font-bold focus:border-amber-500 focus:outline-none text-sm" />
+                            </div>
+                        </td>
+                    `;
+                });
+
+                bodyHTML += `
+                        <td class="p-3 text-center font-bold text-emerald-400 font-mono text-base bg-slate-950/30">${rowTotal}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="removeParticipant(${p.id})" class="text-slate-500 hover:text-rose-400 transition p-1.5 rounded hover:bg-slate-800" title="Rimuovi cacciatore">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            bodyRows.innerHTML = bodyHTML;
+
+            // 3. Costruzione Footer (Somme per colonna)
+            let footerHTML = `
+                <td class="p-3.5 text-center text-amber-500 font-title" colspan="3">TOTALE COMPLESSIVO</td>
+            `;
+            state.columns.forEach(col => {
+                footerHTML += `<td class="p-3.5 text-center text-amber-400 font-mono text-base">${totalsByColumn[col.id]}</td>`;
+            });
+            footerHTML += `<td class="p-3.5 text-center text-emerald-400 font-mono text-lg">${grandTotalAll}</td><td></td>`;
+            footerRow.innerHTML = footerHTML;
+
+            // 4. Aggiornamento Statistiche Superiori
+            document.getElementById('stat-participants').innerText = state.participants.length;
+            document.getElementById('stat-total-items').innerText = grandTotalAll;
+            document.getElementById('stat-total-columns').innerText = state.columns.length;
+            document.getElementById('stat-top-hunter').innerText = topHunterScore > 0 ? `${topHunterName} (${topHunterScore})` : '-';
+        }
+
+        // Esportazione in formato CSV
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Intestazione CSV
+            let headers = ["ID", "Nome Cacciatore", "Missiva (CAP)"];
+            state.columns.forEach(c => headers.push(c.name));
+            headers.push("Totale");
+            csvContent += headers.join(",") + "\r\n";
+
+            // Righe partecipanti
+            state.participants.forEach((p, idx) => {
+                let row = [idx + 1, `"${p.name || ''}"`, `"${p.missiva || ''}"`];
+                let rowTot = 0;
+                state.columns.forEach(c => {
+                    let val = Number(p.values[c.id]) || 0;
+                    row.push(val);
+                    rowTot += val;
+                });
+                row.push(rowTot);
+                csvContent += row.join(",") + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "gara_cacciatore_di_tesori.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Avvio applicazione
+        loadData();
+        render();
+    </script>
+</body>
+</html>
